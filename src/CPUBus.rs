@@ -1,18 +1,29 @@
 #[path = "RAM.rs"] mod RAM;
+#[path = "Cartridge.rs"] mod Cartridge;
 
 pub struct CPUBus {
     ram: RAM::RAM,
+    cart: Cartridge::Cartridge
 }
 
 impl CPUBus {
     pub fn new() -> CPUBus {
-        CPUBus {
-            ram: RAM::RAM::new()
-        }
+        let mut ret: CPUBus = CPUBus {
+            ram: RAM::RAM::new(),
+            cart: Cartridge::Cartridge::new()
+        };
+        ret.cart.load_from_file("nestest.nes".to_string());
+        return ret;
     }
 
     pub fn read(&mut self, address: u16) -> u8 {
-        return self.ram.read(address);
+        if address < 0x7FF {
+            return self.ram.read(address);
+        } else if address >= 0x8000 && address <= 0xffff {
+            return self.cart.read(address - 0x8000);
+        } else {
+            return 0;
+        }
     }
 
     pub fn write(&mut self, address: u16, data: u8) {

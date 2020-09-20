@@ -53,7 +53,7 @@ struct Instruction {
     extraCycles: u8
 }
 
-const NAN: Instruction = Instruction { name: "NAN", addressing: AddressingMode::Implicit, cycles: 0, extraCycles: 0 };
+const NAN: Instruction = Instruction { name: "NAN", addressing: AddressingMode::Implicit, cycles: 2, extraCycles: 0 };
 
 #[allow(dead_code)]
 const INSTRUCTIONS: [Instruction; 256] = [
@@ -361,8 +361,8 @@ fn is_negative(number: u8) -> bool {
 impl CPU6502 {
     pub fn new() -> CPU6502 {
         CPU6502 {
-            program_counter: 0,
-            stack_pointer: 0,
+            program_counter: 0x8000,
+            stack_pointer: 0xff,
             accumulator: 0,
             reg_x: 0,
             reg_y: 0,
@@ -520,7 +520,7 @@ impl CPU6502 {
 
     fn execute(&mut self, executable: Executable) {
         //This function will take up one cycle so we need to artificially wait for the rest
-        let mut cycles_to_wait = executable.cycles - 1;
+        self.cycles_to_wait = executable.cycles - 1;
         match executable.name {
             "ADC" => {
                 let (result, did_overflow) = self.accumulator.overflowing_add(executable.data);
@@ -553,23 +553,26 @@ impl CPU6502 {
             },
             "BCC" => {
                 if !self.is_flag_set(StatusFlags::CARRY) {
-                    self.program_counter += executable.data as u16;
-                    cycles_to_wait += 1;                   
-                    //TODO: Implement the oops
+                    let new_pc = self.program_counter + executable.data as u16;
+                    if new_pc & 0xff00 != self.program_counter & 0xff00 { self.cycles_to_wait += 1; }
+                    self.program_counter = new_pc;
+                    self.cycles_to_wait += 1;
                 }
             },
             "BCS" => {
                 if self.is_flag_set(StatusFlags::CARRY) {
-                    self.program_counter += executable.data as u16;
-                    cycles_to_wait += 1;                   
-                    //TODO: Implement the oops
+                    let new_pc = self.program_counter + executable.data as u16;
+                    if new_pc & 0xff00 != self.program_counter & 0xff00 { self.cycles_to_wait += 1; }
+                    self.program_counter = new_pc;
+                    self.cycles_to_wait += 1;
                 }
             },            
             "BEQ" => {
                 if self.is_flag_set(StatusFlags::ZERO) {
-                    self.program_counter += executable.data as u16;
-                    cycles_to_wait += 1;                   
-                    //TODO: Implement the oops
+                    let new_pc = self.program_counter + executable.data as u16;
+                    if new_pc & 0xff00 != self.program_counter & 0xff00 { self.cycles_to_wait += 1; }
+                    self.program_counter = new_pc;
+                    self.cycles_to_wait += 1;
                 }
             },
             "BIT" => {
@@ -584,23 +587,26 @@ impl CPU6502 {
             },
             "BMI" => {
                 if self.is_flag_set(StatusFlags::NEGATIVE) {
-                    self.program_counter += executable.data as u16;
-                    cycles_to_wait += 1;                   
-                    //TODO: Implement the oops
+                    let new_pc = self.program_counter + executable.data as u16;
+                    if new_pc & 0xff00 != self.program_counter & 0xff00 { self.cycles_to_wait += 1; }
+                    self.program_counter = new_pc;
+                    self.cycles_to_wait += 1;
                 }
             },
             "BNE" => {
                 if !self.is_flag_set(StatusFlags::ZERO) {
-                    self.program_counter += executable.data as u16;
-                    cycles_to_wait += 1;                   
-                    //TODO: Implement the oops
+                    let new_pc = self.program_counter + executable.data as u16;
+                    if new_pc & 0xff00 != self.program_counter & 0xff00 { self.cycles_to_wait += 1; }
+                    self.program_counter = new_pc;
+                    self.cycles_to_wait += 1;
                 }
             },
             "BPL" => {
                 if !self.is_flag_set(StatusFlags::NEGATIVE) {
-                    self.program_counter += executable.data as u16;
-                    cycles_to_wait += 1;                   
-                    //TODO: Implement the oops
+                    let new_pc = self.program_counter + executable.data as u16;
+                    if new_pc & 0xff00 != self.program_counter & 0xff00 { self.cycles_to_wait += 1; }
+                    self.program_counter = new_pc;
+                    self.cycles_to_wait += 1;
                 }
             },
             "BRK" => {
@@ -613,16 +619,18 @@ impl CPU6502 {
             },
             "BVC" => {
                 if !self.is_flag_set(StatusFlags::OVERFLOW) {
-                    self.program_counter += executable.data as u16;
-                    cycles_to_wait += 1;                   
-                    //TODO: Implement the oops
+                    let new_pc = self.program_counter + executable.data as u16;
+                    if new_pc & 0xff00 != self.program_counter & 0xff00 { self.cycles_to_wait += 1; }
+                    self.program_counter = new_pc;
+                    self.cycles_to_wait += 1;
                 }
             },
             "BVS" => {
                 if self.is_flag_set(StatusFlags::OVERFLOW) {
-                    self.program_counter += executable.data as u16;
-                    cycles_to_wait += 1;                   
-                    //TODO: Implement the oops
+                    let new_pc = self.program_counter + executable.data as u16;
+                    if new_pc & 0xff00 != self.program_counter & 0xff00 { self.cycles_to_wait += 1; }
+                    self.program_counter = new_pc;
+                    self.cycles_to_wait += 1;
                 }
             },
             "CLC" => {
@@ -710,7 +718,8 @@ impl CPU6502 {
                 self.status.set(StatusFlags::NEGATIVE, is_negative(self.reg_y));
             }, 
             "JMP" => {
-                self.program_counter += executable.data as u16;
+                println!("{}", executable.target);
+                self.program_counter = executable.target;
             },
             "JSR" => {
                 //Low byte
@@ -895,11 +904,11 @@ impl CPU6502 {
 
     fn push_stack(&mut self, data: u8) {
         self.write(self.stack_pointer as u16 * 256, data);
-        self.stack_pointer += 1;
+        self.stack_pointer -= 1;
     }
 
     fn pop_stack(&mut self) -> u8 {
-        self.stack_pointer -= 1;
+        self.stack_pointer.wrapping_add(1);
         return self.read(self.stack_pointer as u16 * 256);
     }
 

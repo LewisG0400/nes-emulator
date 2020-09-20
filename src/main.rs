@@ -1,27 +1,49 @@
 #[macro_use]
 extern crate bitflags;
+extern crate sdl2;
+
+use sdl2::pixels::PixelFormatEnum;
+use sdl2::rect::Rect;
+use sdl2::event::Event;
+use sdl2::keyboard::Keycode;
 
 use std::{thread, time};
 
 #[path = "CPU6502.rs"] mod CPU6502;
+#[path = "Cartridge.rs"] mod Cartridge;
 
-fn main() {
+fn main() -> Result<(), String> {
     let mut cpu = CPU6502::CPU6502::new();
 
-    cpu.write(0x0000, 0xa9);
-    cpu.write(0x0001, 0xf4);
-    cpu.write(0x0002, 0x8d);
-    cpu.write(0x0003, 0x22);
-    cpu.write(0x0004, 0x22);
-    cpu.write(0x0005, 0xa9);
-    cpu.write(0x0006, 0xaa);
-    cpu.write(0x0007, 0x8d);
-    cpu.write(0x0008, 0x23);
-    cpu.write(0x0009, 0x22);
+    let sdl_context = sdl2::init()?;
+    let video_subsystem = sdl_context.video()?;
 
-    for i in 0..100 {
-        cpu.clock();
-        cpu.print_acc();
-        thread::sleep(time::Duration::from_secs(1));
+    let window = video_subsystem.window("rust-sdl2 demo: Video", 800, 600)
+        .position_centered()
+        .opengl()
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let mut canvas = window.into_canvas().build().map_err(|e| e.to_string())?;
+    let texture_creator = canvas.texture_creator();
+
+    let mut texture = texture_creator.create_texture_streaming(PixelFormatEnum::RGB24, 256, 256)
+        .map_err(|e| e.to_string())?;
+
+    let mut event_pump = sdl_context.event_pump()?;
+
+    'running: loop {
+        for event in event_pump.poll_iter() {
+            match event {
+                Event::Quit {..}
+                | Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
+                    break 'running
+                },
+                _ => {}
+            }
+        }
+        //cpu.clock();
     }
+
+    Ok(()) 
 }
