@@ -509,7 +509,7 @@ impl CPU6502 {
             AddressingMode::Accumulator => {
                 ret_executable.cycles = instruction.cycles;
                 self.program_counter += 1;
-            },
+            }
         }
     return ret_executable;
     }
@@ -717,8 +717,168 @@ impl CPU6502 {
                 self.push_stack((self.program_counter | 0b0000000011111111) as u8);
                 //High byte
                 self.push_stack((self.program_counter >> 8) as u8);
+
+                self.program_counter = executable.target;
+            },
+            "LDA" => {
+                self.status.set(StatusFlags::ZERO, executable.data == 0);
+                self.status.set(StatusFlags::NEGATIVE, is_negative(executable.data));
+
+                self.accumulator = executable.data;
+            },
+            "LDX" => {
+                self.status.set(StatusFlags::ZERO, executable.data == 0);
+                self.status.set(StatusFlags::NEGATIVE, is_negative(executable.data));
+
+                self.reg_x = executable.data;
+            },            
+            "LDY" => {
+                self.status.set(StatusFlags::ZERO, executable.data == 0);
+                self.status.set(StatusFlags::NEGATIVE, is_negative(executable.data));
+
+                self.reg_y = executable.data;
+            },
+            "LSR" => {
+                let result: u8;
+                if executable.target != 0 {
+                    self.status.set(StatusFlags::CARRY, executable.data & 0b00000001 == 0b00000001);
+                    result = executable.data >> 1;
+                    self.status.set(StatusFlags::ZERO, result == 0);
+                    self.status.set(StatusFlags::NEGATIVE, is_negative(result));
+                    self.write(executable.target, result);
+                } else {
+                    self.status.set(StatusFlags::CARRY, self.accumulator & 0b00000001 == 0b00000001);
+                    result = self.accumulator >> 1;
+                    self.status.set(StatusFlags::ZERO, result == 0);
+                    self.status.set(StatusFlags::NEGATIVE, is_negative(result));
+                    self.accumulator = result;
+                }
+            },
+            "NAN" => {
+                
+            },
+            "ORA" => {
+                self.accumulator |= executable.data;
+                self.status.set(StatusFlags::ZERO, self.accumulator == 0);
+                self.status.set(StatusFlags::NEGATIVE, is_negative(self.accumulator));
+            },
+            "PHA" => {
+                self.push_stack(self.accumulator);
+            },
+            "PHP" => {
+                self.push_stack(self.status.bits());
+            },
+            "PLA" => {
+                self.accumulator = self.pop_stack();
+            },
+            "PLP" => {
+                self.status = StatusFlags::from_bits_truncate(self.pop_stack());
+            },
+            "ROL" => {
+                let result: u8;
+                if executable.target != 0 {
+                    self.status.set(StatusFlags::CARRY, executable.data & 0b00000001 == 0b00000001);
+                    result = executable.data >> 1;
+                    self.status.set(StatusFlags::ZERO, result == 0);
+                    self.status.set(StatusFlags::NEGATIVE, is_negative(result));
+                    self.write(executable.target, result);
+                } else {
+                    self.status.set(StatusFlags::CARRY, self.accumulator & 0b00000001 == 0b00000001);
+                    result = self.accumulator >> 1;
+                    self.status.set(StatusFlags::ZERO, result == 0);
+                    self.status.set(StatusFlags::NEGATIVE, is_negative(result));
+                    self.accumulator = result;
+                }
+            },
+            "ROR" => {
+                let mut result: u8;
+                if executable.target != 0 {
+                    let new_carry = executable.data & 0b00000001;
+                    result = executable.data >> 1;
+                    result |= (self.status & StatusFlags::CARRY).bits();
+
+                    self.status.set(StatusFlags::CARRY, new_carry == 0b00000001);
+                    self.status.set(StatusFlags::ZERO, result == 0);
+                    self.status.set(StatusFlags::NEGATIVE, is_negative(result));
+
+                    self.write(executable.target, result);
+                } else {
+                    let new_carry = self.accumulator & 0b00000001;
+                    result = self.accumulator >> 1;
+                    result |= (self.status & StatusFlags::CARRY).bits();
+
+                    self.status.set(StatusFlags::CARRY, new_carry == 0b00000001);
+                    self.status.set(StatusFlags::ZERO, result == 0);
+                    self.status.set(StatusFlags::NEGATIVE, is_negative(result));
+
+                    self.accumulator = result;
+                }                
+            },
+            "RTI" => {
+                self.status = StatusFlags::from_bits_truncate(self.pop_stack());
+                self.program_counter = self.pop_stack() as u16 * 256 + self.pop_stack() as u16;
+            },
+            "RTS" => {
+               self.program_counter = self.pop_stack() as u16 * 256 + self.pop_stack() as u16 - 1;
+            },
+            "SBC" => {
+                let amt = if self.status & StatusFlags::CARRY == StatusFlags::CARRY { executable.data } else { executable.data + 1 };
+                let (result, did_overflow) = self.accumulator.overflowing_sub(amt);
+
+                self.status.set(StatusFlags::CARRY, !did_overflow);
+                self.status.set(StatusFlags::ZERO, result == 0);
+                self.status.set(StatusFlags::NEGATIVE, is_negative(result));
+
+                self.accumulator = result;
+            },
+            "SEC" => {
+                self.status.insert(StatusFlags::CARRY);
+            },
+            "SED" => {
+                self.status.insert(StatusFlags::DECIMAL);
+            },
+            "SEI" => {
+                self.status.insert(StatusFlags::IRQ);
+            },
+            "STA" => {
+                self.write(executable.target, self.accumulator);
+            },
+            "STX" => {
+                self.write(executable.target, self.reg_x);
+            },
+            "STY" => {
+                self.write(executable.target, self.reg_y);
+            },
+            "TAX" => {
+                self.reg_x = self.accumulator;
+                self.status.set(StatusFlags::ZERO, self.reg_x == 0);
+                self.status.set(StatusFlags::NEGATIVE, is_negative(self.reg_x));
+            },
+            "TAY" => {
+                self.reg_y = self.accumulator;
+                self.status.set(StatusFlags::ZERO, self.reg_y == 0);
+                self.status.set(StatusFlags::NEGATIVE, is_negative(self.reg_y));
+            },
+            "TSX" => {
+                self.reg_x = self.stack_pointer;
+                self.status.set(StatusFlags::ZERO, self.reg_x == 0);
+                self.status.set(StatusFlags::NEGATIVE, is_negative(self.reg_x));
+            },
+            "TXA" => {
+                self.accumulator = self.reg_x;
+                self.status.set(StatusFlags::ZERO, self.accumulator == 0);
+                self.status.set(StatusFlags::NEGATIVE, is_negative(self.accumulator));
+            },
+            "TXS" => {
+                self.stack_pointer = self.reg_x;
+            },
+            "TYA" => {
+                self.accumulator = self.reg_y;
+                self.status.set(StatusFlags::ZERO, self.accumulator == 0);
+                self.status.set(StatusFlags::NEGATIVE, is_negative(self.accumulator));
             },
             _ => {
+
             }
         }
     }
