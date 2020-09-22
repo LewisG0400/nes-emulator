@@ -14,7 +14,11 @@ impl Cartridge {
     }
 
     pub fn read(&mut self, address: u16) -> u8 {
-        return self.data[(address % 0x8000) as usize];
+        if address < 0x4000 {
+            return self.data[(address) as usize];
+        } else {
+            return self.data[(address - 0x4000) as usize];
+        }
     }
 
     pub fn load_from_file(&mut self, path: String) -> std::io::Result<()> {

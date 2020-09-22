@@ -19,7 +19,7 @@ impl CPUBus {
     pub fn read(&mut self, address: u16) -> u8 {
         if address < 0x7FF {
             return self.ram.read(address);
-        } else if address >= 0x8000 && address <= 0xffff {
+        } else if address >= 0x8000 {
             return self.cart.read(address - 0x8000);
         } else {
             return 0;

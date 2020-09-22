@@ -22,7 +22,7 @@ pub struct CPU6502 {
     reg_x: u8,
     reg_y: u8,
     status: StatusFlags,
-    cycles_to_wait: u8,
+    pub cycles_to_wait: u8,
     main_bus: CPUBus::CPUBus
 }
 
@@ -361,7 +361,7 @@ fn is_negative(number: u8) -> bool {
 impl CPU6502 {
     pub fn new() -> CPU6502 {
         CPU6502 {
-            program_counter: 0x8000,
+            program_counter: 0xc000,
             stack_pointer: 0xff,
             accumulator: 0,
             reg_x: 0,
@@ -382,10 +382,11 @@ impl CPU6502 {
 
     fn decode_next_instruction(&mut self) -> Executable {
         let opcode = self.read(self.program_counter);
-        println!("Opcode: {:#04x}", opcode);
+        println!("Status:");
+        println!("A: {:2x}, X: {:2x}, Y: {:2x}, PC: {:4x}, SP: {:2x}, status: {:8b}", self.accumulator, self.reg_x, self.reg_y, self.program_counter, self.stack_pointer, self.status);
         let instruction: &Instruction = &INSTRUCTIONS[opcode as usize];
         let mut ret_executable: Executable = Executable {name: instruction.name, target: 0, data: 0, cycles: 0};
-        println!("{:?}", instruction);
+        println!("OP: {}, {:?}", opcode, instruction);
         match instruction.addressing {
             AddressingMode::Immediate => {
                 ret_executable.data = self.read(self.program_counter + 1);
@@ -595,7 +596,8 @@ impl CPU6502 {
             },
             "BNE" => {
                 if !self.is_flag_set(StatusFlags::ZERO) {
-                    let new_pc = self.program_counter + executable.data as u16;
+                    let new_pc = (self.program_counter as i32 + (executable.data as i8) as i32) as u16;
+                    println!("Old PC: {:2x}, Data: {:2x}, New PC: {:2x}", self.program_counter, executable.data, new_pc);
                     if new_pc & 0xff00 != self.program_counter & 0xff00 { self.cycles_to_wait += 1; }
                     self.program_counter = new_pc;
                     self.cycles_to_wait += 1;
@@ -718,7 +720,6 @@ impl CPU6502 {
                 self.status.set(StatusFlags::NEGATIVE, is_negative(self.reg_y));
             }, 
             "JMP" => {
-                println!("{}", executable.target);
                 self.program_counter = executable.target;
             },
             "JSR" => {
@@ -897,6 +898,7 @@ impl CPU6502 {
             let exec: Executable = self.decode_next_instruction();
             self.cycles_to_wait = exec.cycles;
             self.execute(exec);
+            println!("Executing, {} clocks left", self.cycles_to_wait);
         } else {
             self.cycles_to_wait -= 1;
         }

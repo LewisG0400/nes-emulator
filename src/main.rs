@@ -3,14 +3,12 @@ extern crate bitflags;
 extern crate sdl2;
 
 use sdl2::pixels::PixelFormatEnum;
-use sdl2::rect::Rect;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 
 use std::{thread, time};
 
 #[path = "CPU6502.rs"] mod CPU6502;
-#[path = "Cartridge.rs"] mod Cartridge;
 
 fn main() -> Result<(), String> {
     let mut cpu = CPU6502::CPU6502::new();
@@ -39,10 +37,15 @@ fn main() -> Result<(), String> {
                 | Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
                     break 'running
                 },
+                Event::KeyDown { keycode: Some(Keycode::Space), ..} => {
+                    cpu.clock();
+                    while cpu.cycles_to_wait != 0 {
+                        cpu.clock();
+                    }
+                },
                 _ => {}
             }
         }
-        //cpu.clock();
     }
 
     Ok(()) 
