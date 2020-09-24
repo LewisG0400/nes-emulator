@@ -649,7 +649,7 @@ impl CPU6502 {
                 self.status.remove(StatusFlags::OVERFLOW);
             },
             "CMP" => {
-                let result = self.accumulator - executable.data;
+                let result = self.accumulator.wrapping_sub(executable.data);
                 if result > 0 {
                     self.status.insert(StatusFlags::CARRY);
                 } else if result == 0 {
