@@ -17,8 +17,10 @@ impl CPUBus {
     }
 
     pub fn read(&mut self, address: u16) -> u8 {
-        if address < 0x7FF {
+        if address <= 0x17FF {
             return self.ram.read(address);
+        } else if address >= 0x2000 && address <= 0x3FFF {
+            return 0;            
         } else if address >= 0x8000 {
             return self.cart.read(address - 0x8000);
         } else {
@@ -27,6 +29,12 @@ impl CPUBus {
     }
 
     pub fn write(&mut self, address: u16, data: u8) {
-        self.ram.write(address, data);
+        if address < 0x17FF {
+            self.ram.write(address, data);
+        } else if address >= 0x8000 {
+            
+        } else {
+            
+        }
     }
 }

@@ -2,7 +2,6 @@ mod CPUBus;
 
 extern crate bitflags;
 
-
 bitflags! {
     struct StatusFlags: u8 {
         const CARRY = 0b00000001;
@@ -382,11 +381,13 @@ impl CPU6502 {
 
     fn decode_next_instruction(&mut self) -> Executable {
         let opcode = self.read(self.program_counter);
-        println!("Status:");
-        println!("A: {:2x}, X: {:2x}, Y: {:2x}, PC: {:4x}, SP: {:2x}, status: {:8b}", self.accumulator, self.reg_x, self.reg_y, self.program_counter, self.stack_pointer, self.status);
         let instruction: &Instruction = &INSTRUCTIONS[opcode as usize];
         let mut ret_executable: Executable = Executable {name: instruction.name, target: 0, data: 0, cycles: 0};
+
         println!("OP: {}, {:?}", opcode, instruction);
+        println!("Status:");
+        println!("A: {:2x}, X: {:2x}, Y: {:2x}, PC: {:4x}, SP: {:2x}, status: {:8b}", self.accumulator, self.reg_x, self.reg_y, self.program_counter, self.stack_pointer, self.status);
+
         match instruction.addressing {
             AddressingMode::Immediate => {
                 ret_executable.data = self.read(self.program_counter + 1);
@@ -723,10 +724,11 @@ impl CPU6502 {
                 self.program_counter = executable.target;
             },
             "JSR" => {
-                //Low byte
-                self.push_stack((self.program_counter | 0b0000000011111111) as u8);
+                self.program_counter = self.program_counter.wrapping_sub(1);
                 //High byte
                 self.push_stack((self.program_counter >> 8) as u8);
+                //Low byte
+                self.push_stack((self.program_counter & 0b0000000011111111) as u8);
 
                 self.program_counter = executable.target;
             },
@@ -829,7 +831,7 @@ impl CPU6502 {
                 self.program_counter = self.pop_stack() as u16 * 256 + self.pop_stack() as u16;
             },
             "RTS" => {
-               self.program_counter = self.pop_stack() as u16 * 256 + self.pop_stack() as u16 - 1;
+                self.program_counter = self.pop_stack() as u16 + self.pop_stack() as u16 * 256 + 1;
             },
             "SBC" => {
                 let amt = if self.status & StatusFlags::CARRY == StatusFlags::CARRY { executable.data } else { executable.data + 1 };
@@ -898,23 +900,18 @@ impl CPU6502 {
             let exec: Executable = self.decode_next_instruction();
             self.cycles_to_wait = exec.cycles;
             self.execute(exec);
-            println!("Executing, {} clocks left", self.cycles_to_wait);
         } else {
             self.cycles_to_wait -= 1;
         }
     }
 
     fn push_stack(&mut self, data: u8) {
-        self.write(self.stack_pointer as u16 * 256, data);
-        self.stack_pointer -= 1;
+        self.write(self.stack_pointer as u16 + 256, data);
+        self.stack_pointer = self.stack_pointer.wrapping_sub(1);
     }
 
     fn pop_stack(&mut self) -> u8 {
-        self.stack_pointer.wrapping_add(1);
-        return self.read(self.stack_pointer as u16 * 256);
-    }
-
-    pub fn print_acc(&self) {
-        println!("PC: {}, ACC: {}", self.program_counter, self.accumulator);
+        self.stack_pointer = self.stack_pointer.wrapping_add(1);
+        return self.read(self.stack_pointer as u16 + 256);
     }
 }
