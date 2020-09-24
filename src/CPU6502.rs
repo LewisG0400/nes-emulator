@@ -9,6 +9,7 @@ bitflags! {
         const IRQ = 0b00000100;
         const DECIMAL = 0b00001000;
         const BRK = 0b00010000;
+        const UNUSED = 0b00100000;
         const OVERFLOW = 0b01000000;
         const NEGATIVE = 0b10000000;
     }
@@ -365,7 +366,8 @@ impl CPU6502 {
             accumulator: 0,
             reg_x: 0,
             reg_y: 0,
-            status: StatusFlags::empty(),
+            //this flag is always set
+            status: StatusFlags::UNUSED,
             cycles_to_wait: 0,
             main_bus: CPUBus::CPUBus::new()
         }
@@ -386,7 +388,7 @@ impl CPU6502 {
 
         println!("OP: {}, {:?}", opcode, instruction);
         println!("Status:");
-        println!("A: {:2x}, X: {:2x}, Y: {:2x}, PC: {:4x}, SP: {:2x}, status: {:8b}", self.accumulator, self.reg_x, self.reg_y, self.program_counter, self.stack_pointer, self.status);
+        println!("A: {:2x}, X: {:2x}, Y: {:2x}, PC: {:4x}, SP: {:2x}, status: {:8b} \n", self.accumulator, self.reg_x, self.reg_y, self.program_counter, self.stack_pointer, self.status);
 
         match instruction.addressing {
             AddressingMode::Immediate => {
@@ -618,6 +620,7 @@ impl CPU6502 {
                 //High byte
                 self.push_stack((self.program_counter >> 8) as u8);
                 self.push_stack(self.status.bits());
+
                 self.status.insert(StatusFlags::BRK);
             },
             "BVC" => {
@@ -778,6 +781,7 @@ impl CPU6502 {
                 self.push_stack(self.accumulator);
             },
             "PHP" => {
+                self.status.insert(StatusFlags::BRK);
                 self.push_stack(self.status.bits());
             },
             "PLA" => {
