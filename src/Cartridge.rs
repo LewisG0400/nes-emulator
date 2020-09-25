@@ -15,9 +15,9 @@ impl Cartridge {
 
     pub fn read(&mut self, address: u16) -> u8 {
         if address < 0x4000 {
-            return self.data[(address) as usize];
+            self.data[(address) as usize]
         } else {
-            return self.data[(address - 0x4000) as usize];
+            self.data[(address - 0x4000) as usize]
         }
     }
 

@@ -355,7 +355,7 @@ struct Executable {
 
 
 fn is_negative(number: u8) -> bool {
-    return number & 0b10000000 == 0b10000000;
+    number & 0b10000000 == 0b10000000
 }
 
 impl CPU6502 {
@@ -374,7 +374,7 @@ impl CPU6502 {
     }
 
     pub fn read(&mut self, address: u16) -> u8 {
-        return self.main_bus.read(address);
+        self.main_bus.read(address)
     }
 
     pub fn write (&mut self, address: u16, data: u8) {
@@ -515,11 +515,11 @@ impl CPU6502 {
                 self.program_counter += 1;
             }
         }
-    return ret_executable;
+    ret_executable
     }
 
     fn is_flag_set(&self, flag: StatusFlags) -> bool {
-        return self.status & flag == flag;
+        self.status & flag == flag
     }
 
     fn execute(&mut self, executable: Executable) {
@@ -916,6 +916,6 @@ impl CPU6502 {
 
     fn pop_stack(&mut self) -> u8 {
         self.stack_pointer = self.stack_pointer.wrapping_add(1);
-        return self.read(self.stack_pointer as u16 + 256);
+        self.read(self.stack_pointer as u16 + 256)
     }
 }

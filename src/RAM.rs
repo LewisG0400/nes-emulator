@@ -16,4 +16,8 @@ impl RAM {
     pub fn write(&mut self, address: u16, data: u8) {
         self.data[(address % 2047) as usize] = data;
     }
+
+    pub fn get_page(&mut self, page: u8) -> &[u8] {
+        &self.data[(page << 8) as usize.. (page << 8 + 256) as usize]
+    }
 }
