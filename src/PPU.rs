@@ -12,7 +12,11 @@ pub struct PPU {
 
     //This is for loading in the PPUADDR in 2 writes
     temp_address: u16,
-    first_write: bool
+    first_write: bool,
+
+    cycle: u16,
+    scanline: u16,
+    frame_done: bool
 }
 
 impl PPU {
@@ -26,10 +30,14 @@ impl PPU {
             PPUADDR: 0,
 
             VRAM: Box::new([0; 16384]),
-            SPR_RAM: Box::new([0; 2048]),
+            SPR_RAM: Box::new([0; 256]),
 
             temp_address: 0,
-            first_write: true
+            first_write: true,
+
+            cycle: 0,
+            scanline: 0,
+            frame_done: false
         }
     }
 
@@ -72,7 +80,8 @@ impl PPU {
                 0
             },
             0x0007 => {
-                self.VRAM[self.PPUADDR as usize]
+                //TODO: Something about the first read being invalid
+                self.VRAM[(self.PPUADDR & 0x4000) as usize]
             },
             _ => {
                 0
@@ -92,14 +101,16 @@ impl PPU {
                 self.PPUSTATUS = data;
             },
             0x2003 => {
+                //Set the sprite RAM address. This is only an 8 bit pointer
                 self.OAMADDR = data;
             },
             0x2004 => {
                 self.SPR_RAM[self.OAMADDR as usize] = data;
-                //TODO: check if this actually overflows (probably does)
+                //TODO: check if this actually wraps (probably does)
                 self.OAMADDR = self.OAMADDR.wrapping_add(1);
             },
             0x2005 => {
+                //Set the ppu scroll. This takes to writes as it is a 16 bit value
                 if self.first_write {
                     self.temp_address = (data as u16) << 8;
                     self.first_write = false;
@@ -110,6 +121,7 @@ impl PPU {
                 }
             },
             0x2006 => {
+                //Set the PPU RAM address. This takes to writes as it is a 16 bit value
                 if self.first_write {
                     self.temp_address = (data as u16) << 8;
                     self.first_write = false;
@@ -121,7 +133,7 @@ impl PPU {
             },
             0x2007 => {
                 //TODO: Make sure screen is off first
-                self.VRAM[self.PPUADDR as usize] = data;
+                self.VRAM[(self.PPUADDR & 0x4000) as usize] = data;
                 //If this bit is set to 0 we're going across so add 1. Else we're going down a line
                 //so add 32
                 self.PPUADDR = self.PPUADDR.wrapping_add(if self.PPUCTRL & 0b00000100 == 0 {1} else {32});
@@ -136,5 +148,21 @@ impl PPU {
     ////TODO: optimise this
     pub fn OAMDMA(&mut self, data: [u8; 256]) {
         self.SPR_RAM = Box::new(data);
+    }
+
+    pub fn clock(&mut self) -> (u16, u16, u8) {
+        let ret = (self.cycle, self.scanline, 0);//self.VRAM[0x3F00]);
+
+        self.cycle += 1;
+        if self.cycle >= 341 {
+            self.cycle = 0;
+            self.scanline += 1;
+            if self.scanline >= 261 {
+                self.scanline = 0;
+                self.frame_done = true;
+            }
+        }
+
+        ret
     }
 }

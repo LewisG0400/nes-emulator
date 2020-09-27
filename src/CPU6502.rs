@@ -900,6 +900,10 @@ impl CPU6502 {
     }
 
     pub fn clock(&mut self) {
+        //The PPU clocks 3 times per CPU clock
+        for _i in 0..3 {
+            self.main_bus.clock_ppu()
+        }
         if self.cycles_to_wait == 0 {
             let exec: Executable = self.decode_next_instruction();
             self.cycles_to_wait = exec.cycles;

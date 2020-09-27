@@ -19,6 +19,10 @@ impl CPUBus {
         ret
     }
 
+    pub fn clock_ppu(&mut self) {
+        self.ppu.clock();
+    }
+
     pub fn read(&mut self, address: u16) -> u8 {
         if address <= 0x17FF {
             self.ram.read(address)
@@ -45,6 +49,11 @@ impl CPUBus {
             match address {
                 0x4014 => {
                     self.ppu.OAMDMA(self.ram.get_page(data));
+                },
+                _ => {
+
+                }
+            }
         } else if address >= 0x8000 {
             
         } else {

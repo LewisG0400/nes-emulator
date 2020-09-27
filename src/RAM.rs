@@ -1,3 +1,5 @@
+use std::convert::TryInto;
+
 pub struct RAM {
     data: Box<[u8; 2048]>
 }
@@ -17,7 +19,7 @@ impl RAM {
         self.data[(address % 2047) as usize] = data;
     }
 
-    pub fn get_page(&mut self, page: u8) -> &[u8] {
-        &self.data[(page << 8) as usize.. (page << 8 + 256) as usize]
+    pub fn get_page(&mut self, page: u8) -> [u8; 256] {
+        self.data[((page as u16) << 8) as usize.. (((page as u16) << 8) + 256) as usize].try_into().expect("Error reading page")
     }
 }
