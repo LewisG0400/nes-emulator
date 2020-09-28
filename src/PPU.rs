@@ -1,4 +1,3 @@
-
 pub struct PPU {
     PPUCTRL: u8,
     PPUMASK: u8,
@@ -16,7 +15,9 @@ pub struct PPU {
 
     cycle: u16,
     scanline: u16,
-    frame_done: bool
+    pub frame_done: bool,
+
+    pub frame_buffer: Box<[u8; 61440 * 3]>
 }
 
 impl PPU {
@@ -37,7 +38,9 @@ impl PPU {
 
             cycle: 0,
             scanline: 0,
-            frame_done: false
+            frame_done: false,
+
+            frame_buffer: Box::new([0; 61440 * 3])
         }
     }
 
@@ -150,8 +153,12 @@ impl PPU {
         self.SPR_RAM = Box::new(data);
     }
 
-    pub fn clock(&mut self) -> (u16, u16, u8) {
-        let ret = (self.cycle, self.scanline, 0);//self.VRAM[0x3F00]);
+    pub fn clock(&mut self) -> bool {
+        if self.cycle < 256 && self.scanline < 240 {
+            self.frame_buffer[(self.cycle + self.scanline * 256) as usize] = 255; //self.cycle as u8;
+            self.frame_buffer[(self.cycle + self.scanline * 256 + 1) as usize] = self.cycle as u8;
+            self.frame_buffer[(self.cycle + self.scanline * 256 + 2) as usize] = self.cycle as u8;
+        }
 
         self.cycle += 1;
         if self.cycle >= 341 {
@@ -162,7 +169,6 @@ impl PPU {
                 self.frame_done = true;
             }
         }
-
-        ret
+        self.frame_done
     }
 }

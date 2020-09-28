@@ -28,13 +28,13 @@ fn main() -> Result<(), String> {
     let mut canvas = window.into_canvas().build().map_err(|e| e.to_string())?;
     let texture_creator = canvas.texture_creator();
 
-    let mut texture = texture_creator.create_texture_streaming(PixelFormatEnum::RGB24, 256, 256)
+    let mut texture = texture_creator.create_texture_streaming(PixelFormatEnum::RGB24, 256, 240)
         .map_err(|e| e.to_string())?;
 
     let mut event_pump = sdl_context.event_pump()?;
 
     let mut step_mode = false;
-    let mut time_left = Duration::new(0, 0);
+    let mut time_left: i64 = 0;
     let mut start_time = Instant::now();
     let mut new_time = Instant::now();
 
@@ -64,12 +64,20 @@ fn main() -> Result<(), String> {
             new_time = Instant::now();
             let time_taken = new_time.duration_since(start_time);
 
-            if time_left.is_zero() {
-                time_left -= time_taken;
+            if time_left >= 0 {
+                time_left -= time_taken.subsec_nanos() as i64;
             } else {
-                time_left = Duration::new(0, ((1.0 / 60.0) * 1_000_000_000.0) as u32) - time_taken;
-                cpu.clock();
+                time_left = Duration::from_nanos(((1.0 / 60.0) * 1_000_000.0) as u64).subsec_nanos() as i64 - time_taken.subsec_nanos() as i64;
+                
+                let frame_done: bool = cpu.clock();
+                if frame_done {
+                    canvas.clear();
+                    texture.update(None, cpu.get_frame_buffer().as_ref(), 0);
+                    canvas.copy(&texture, None, None)?;
+                    canvas.present();
+                }
             }
+
             start_time = new_time;
         }
     }

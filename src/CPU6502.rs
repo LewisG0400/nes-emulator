@@ -899,10 +899,12 @@ impl CPU6502 {
         }
     }
 
-    pub fn clock(&mut self) {
+    //Returns if the frame is finished
+    pub fn clock(&mut self) -> bool {
+        let mut frame_done = false;
         //The PPU clocks 3 times per CPU clock
         for _i in 0..3 {
-            self.main_bus.clock_ppu()
+            frame_done = frame_done || self.main_bus.clock_ppu();
         }
         if self.cycles_to_wait == 0 {
             let exec: Executable = self.decode_next_instruction();
@@ -911,6 +913,11 @@ impl CPU6502 {
         } else {
             self.cycles_to_wait -= 1;
         }
+        frame_done
+    }
+
+    pub fn get_frame_buffer(&mut self) -> &Box<[u8; 61440 * 3]> {
+        self.main_bus.get_frame_buffer()
     }
 
     fn push_stack(&mut self, data: u8) {

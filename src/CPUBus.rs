@@ -19,8 +19,12 @@ impl CPUBus {
         ret
     }
 
-    pub fn clock_ppu(&mut self) {
-        self.ppu.clock();
+    pub fn clock_ppu(&mut self) -> bool {
+        self.ppu.clock()
+    }
+
+    pub fn get_frame_buffer(&mut self) -> &Box<[u8; 61440 * 3]> {
+        &self.ppu.frame_buffer
     }
 
     pub fn read(&mut self, address: u16) -> u8 {
