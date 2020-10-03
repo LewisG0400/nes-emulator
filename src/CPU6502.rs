@@ -407,7 +407,7 @@ impl CPU6502 {
             },
             AddressingMode::AbsoluteIndexedX => {
                 let low = self.read(self.program_counter + 1);
-                let high = self.read(self.program_counter + 2);
+                let high = (self.read(self.program_counter + 2) as u16) << 8;
 
                 //If did_overflow is set, we spill into the next page and need an oops cycle
                 let (low, did_overflow) = low.overflowing_add(self.reg_x);
@@ -424,7 +424,7 @@ impl CPU6502 {
             },
             AddressingMode::AbsoluteIndexedY => {
                 let low = self.read(self.program_counter + 1);
-                let high = self.read(self.program_counter + 2);
+                let high = (self.read(self.program_counter + 2) as u16) << 8;
 
                 //If did_overflow is set, we spill into the next page and need an oops cycle
                 let (low, did_overflow) = low.overflowing_add(self.reg_y);
@@ -475,7 +475,7 @@ impl CPU6502 {
                 let loc_high = self.read(self.program_counter + 2);
 
                 //Find actual target by reading operand address and the address after
-                let loc = loc_low as u16 + loc_high as u16 * 256;
+                let loc = loc_low as u16 + (loc_high as u16) << 8;
 
                 ret_executable.target = self.read(loc) as u16 + self.read(loc + 1) as u16;
 
@@ -486,7 +486,7 @@ impl CPU6502 {
                 //The target here has its low byte in $(operand+X) and high byte in $(operand+X+1)
                 let operand = self.read(self.program_counter + 1);
                 
-                ret_executable.target = self.read((operand + self.reg_x) as u16) as u16 + self.read((operand + self.reg_x + 1) as u16) as u16 * 256;
+                ret_executable.target = self.read((operand + self.reg_x) as u16) as u16 + (self.read((operand + self.reg_x + 1) as u16) as u16) << 8;
 
                 ret_executable.cycles = instruction.cycles;
                 self.program_counter += 2;
@@ -496,7 +496,7 @@ impl CPU6502 {
                 //incremented by Y
                 let operand = self.read(self.program_counter + 1);
 
-                let target = self.read(operand as u16) as u16 + self.read((operand + 1) as u16) as u16 * 256;
+                let target = self.read(operand as u16) as u16 + (self.read((operand + 1) as u16) as u16) << 8;
                 let (target, did_overflow) = target.overflowing_add(self.reg_y as u16);
 
                 //TODO: Figure out this oops
@@ -839,7 +839,7 @@ impl CPU6502 {
                 self.program_counter = self.pop_stack() as u16 * 256 + self.pop_stack() as u16;
             },
             "RTS" => {
-                self.program_counter = self.pop_stack() as u16 + self.pop_stack() as u16 * 256 + 1;
+                self.program_counter = self.pop_stack() as u16 + (self.pop_stack() as u16) << 8 + 1;
             },
             "SBC" => {
                 let amt = if self.status & StatusFlags::CARRY == StatusFlags::CARRY { executable.data } else { executable.data + 1 };
