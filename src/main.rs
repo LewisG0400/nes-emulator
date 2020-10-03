@@ -33,7 +33,7 @@ fn main() -> Result<(), String> {
 
     let mut event_pump = sdl_context.event_pump()?;
 
-    let mut step_mode = false;
+    let mut step_mode = true;
     let mut time_left: i64 = 0;
     let mut start_time = Instant::now();
     let mut new_time = Instant::now();
@@ -72,7 +72,7 @@ fn main() -> Result<(), String> {
                 let frame_done: bool = cpu.clock();
                 if frame_done {
                     canvas.clear();
-                    texture.update(None, cpu.get_frame_buffer().as_ref(), 0);
+                    texture.update(None, cpu.get_frame_buffer().as_ref(), 256);
                     canvas.copy(&texture, None, None)?;
                     canvas.present();
                 }

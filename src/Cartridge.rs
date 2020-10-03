@@ -12,8 +12,8 @@ pub struct Cartridge {
 impl Cartridge {
     pub fn new() -> Cartridge {
         let amapper = Box::new(Mapper::Mapper0 {
-            nprg_banks: 0,
-            nchr_banks: 0
+            nprg_banks: 1,
+            nchr_banks: 1
         });
         Cartridge {
             data: Box::new([0; 32768]),

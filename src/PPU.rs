@@ -155,7 +155,7 @@ impl PPU {
 
     pub fn clock(&mut self) -> bool {
         if self.cycle < 256 && self.scanline < 240 {
-            self.frame_buffer[(self.cycle + self.scanline * 256) as usize] = 255; //self.cycle as u8;
+            self.frame_buffer[(self.cycle + self.scanline * 256) as usize] = self.cycle as u8;
             self.frame_buffer[(self.cycle + self.scanline * 256 + 1) as usize] = self.cycle as u8;
             self.frame_buffer[(self.cycle + self.scanline * 256 + 2) as usize] = self.cycle as u8;
         }

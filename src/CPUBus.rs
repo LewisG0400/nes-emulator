@@ -15,7 +15,7 @@ impl CPUBus {
             ppu: PPU::PPU::new(),
             cart: Cartridge::Cartridge::new()
         };
-        ret.cart.load_from_file("nestest.nes".to_string());
+        ret.cart.load_from_file("res/nestest.nes".to_string());
         ret
     }
 

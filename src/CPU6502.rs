@@ -23,7 +23,8 @@ pub struct CPU6502 {
     reg_y: u8,
     status: StatusFlags,
     pub cycles_to_wait: u8,
-    main_bus: CPUBus::CPUBus
+    main_bus: CPUBus::CPUBus,
+    total_cycles: u32
 }
 
 #[derive(Debug)]
@@ -369,7 +370,8 @@ impl CPU6502 {
             //this flag is always set
             status: StatusFlags::UNUSED,
             cycles_to_wait: 0,
-            main_bus: CPUBus::CPUBus::new()
+            main_bus: CPUBus::CPUBus::new(),
+            total_cycles: 0
         }
     }
 
@@ -505,6 +507,7 @@ impl CPU6502 {
                 }
 
                 ret_executable.target = target;
+                self.program_counter += 2;
             },
             AddressingMode::Implicit => {
                 ret_executable.cycles = instruction.cycles;
@@ -525,6 +528,7 @@ impl CPU6502 {
     fn execute(&mut self, executable: Executable) {
         //This function will take up one cycle so we need to artificially wait for the rest
         self.cycles_to_wait = executable.cycles - 1;
+        self.total_cycles += executable.cycles as u32;
         match executable.name {
             "ADC" => {
                 let (result, did_overflow) = self.accumulator.overflowing_add(executable.data);
@@ -662,7 +666,7 @@ impl CPU6502 {
                 self.status.set(StatusFlags::NEGATIVE, is_negative(result));
             },
             "CPX" => {
-                let result = self.reg_x - executable.data;
+                let result = self.reg_x.wrapping_sub(executable.data);
                 if result > 0 {
                     self.status.insert(StatusFlags::CARRY);
                 } else if result == 0 {
@@ -672,7 +676,7 @@ impl CPU6502 {
                 self.status.set(StatusFlags::NEGATIVE, is_negative(result));
             },
             "CPY" => {
-                let result = self.reg_y - executable.data;
+                let result = self.reg_y.wrapping_sub(executable.data);
                 if result > 0 {
                     self.status.insert(StatusFlags::CARRY);
                 } else if result == 0 {
